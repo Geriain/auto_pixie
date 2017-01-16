@@ -172,39 +172,39 @@ def reaver():
          if time.time() > timeout:
             break
          if b"E-Nonce" in line and ENonce == "":
-            ENonce=line.split(':',1)[1].strip()
+            ENonce=line.decode().split(':',1)[1]
             print("E-Nonce: found")
             print(ENonce)
          if b"PKE" in line and PKE == "":
-            PKE=line.split(':',1)[1].strip()
+            PKE=line.decode().split(':',1)[1]
             print("PKE: found")
             print(PKE)
          if b"R-Nonce" in line and RNonce == "":
-            RNonce=line.split(':',1)[1].strip()
+            RNonce=line.decode().split(':',1)[1]
             print("R-Nonce: found")
             print(RNonce)
          if b"PKR" in line and PKR == "":
-            PKR=line.split(':',1)[1].strip()
+            PKR=line.decode().split(':',1)[1]
             print("PKR: found")
             print(PKR)
          if b"AuthKey" in line and AuthKey == "":
-            AuthKey=line.split(':',1)[1].strip()
+            AuthKey=line.decode().split(':',1)[1]
             print("AuthKey: found")
             print(AuthKey)
          if b"E-Hash1" in line and EHash1 == "":
-            EHash1=line.split(':',1)[1].strip()
+            EHash1=line.decode().split(':',1)[1]
             print("E-Hash1: found")
             print(EHash1)
          if b"E-Hash2" in line and EHash2 == "":
-            EHash2=line.split(':',1)[1].strip()
+            EHash2=line.decode().split(':',1)[1]
             print("E-Hash2: found")
             print(EHash2)
          if b"WPS pin" in line and PIN == "":
-            PIN=line.split(':',4)[1].strip()
+            PIN=line.decode().split(':',4)[1]
             print("WPS Pin: found")
             print(PIN)
          if b"WPA PSK" in line:
-            PWD=line.split(':',1)[1].strip()
+            PWD=line.decode().split(':',1)[1]
             print("Key recovered!")
             keycount = keycount + 1
             text_file = open("bees.txt", "a")
