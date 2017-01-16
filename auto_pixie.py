@@ -1,6 +1,5 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 
-from __future__ import print_function
 import subprocess
 import csv
 import time
@@ -31,45 +30,45 @@ network_max = 0
 DN = open(os.devnull, 'w')
 
 def reset():
-    global ENonce, RNonce, PKE, PKR, AuthKey, EHash1, EHash2, PIN, PWD
-    ENonce = ""
-    RNonce = ""
-    PKE = ""
-    PKR = ""
-    AuthKey = ""
-    EHash1 = ""
-    EHash2 = ""
-    PIN = ""
-    PWD = ""
-    return 0
+   global ENonce, RNonce, PKE, PKR, AuthKey, EHash1, EHash2, PIN, PWD
+   ENonce = ""
+   RNonce = ""
+   PKE = ""
+   PKR = ""
+   AuthKey = ""
+   EHash1 = ""
+   EHash2 = ""
+   PIN = ""
+   PWD = ""
+   return 0
 
 def monitor():
-    global interface
-    try:
-	subprocess.Popen(['airmon-ng', 'check', 'kill'], stdout=DN, stderr=DN)
-	time.sleep(5)
-	clear()
-	subprocess.call(['airmon-ng'])
-	interface=raw_input("Choice: ")
-	clear()
-	subprocess.call(['airmon-ng', 'start', interface], stdout=DN, stderr=DN)
-	interface=interface+'mon'
-	clear()
-	return interface
-    except KeyboardInterrupt:
-        return 0
+   global interface
+   try:
+      subprocess.Popen(['airmon-ng', 'check', 'kill'], stdout=DN, stderr=DN)
+      time.sleep(5)
+      clear()
+      subprocess.call(['airmon-ng'])
+      interface=raw_input("Choice: ")
+      clear()
+      subprocess.call(['airmon-ng', 'start', interface], stdout=DN, stderr=DN)
+      interface=interface+'mon'
+      clear()
+      return interface
+   except KeyboardInterrupt:
+      return 0
 
 def clear():
-    subprocess.call(["clear"])
-	
+   subprocess.call(["clear"])
+
 def scan():
-    global network_max
-    try:
-	timeout = time.time() + 60*3
-	subprocess.Popen(['wash', '-i', interface, '--ignore-fcs', '-P' , '-o', 'temp.csv'], stdout=DN, stderr=DN)
-        time.sleep(5)
-        while True:
-	    if time.time() > timeout:
+   global network_max
+   try:
+      timeout = time.time() + 60*3
+      subprocess.Popen(['wash', '-i', interface, '--ignore-fcs', '-P' , '-o', 'temp.csv'], stdout=DN, stderr=DN)
+      time.sleep(5)
+      while True:
+         if time.time() > timeout:
 		break
             clear()
             cr = csv.reader(open("temp.csv"))
